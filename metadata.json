@@ -1,0 +1,6 @@
+{
+  "name": "BotHost - Python Telegram Bot Hosting Platform",
+  "description": "Docker-asosidagi xavfsiz va 24/7 Python Telegram bot hosting platformasi. Izolyatsiyalangan konteynerlar, avtomatik ishga tushirish, real vaqt jurnallari va resurs monitoringi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

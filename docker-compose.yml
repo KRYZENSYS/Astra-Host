@@ -1,0 +1,93 @@
+version: "3.9"
+
+services:
+  # ----------------------------------------------------------------------------
+  # Caddy Reverse Proxy (Automatic HTTPS / TLS)
+  # ----------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: bothost_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - bothost_net
+
+  # ----------------------------------------------------------------------------
+  # PostgreSQL 16 Database
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: bothost_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bothost_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bothost_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bothost_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bothost_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bothost_user} -d ${POSTGRES_DB:-bothost_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # FastAPI Backend (Stateless API & Real Docker SDK Orchestrator)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bothost_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Mount Docker socket to manage bot containers on host
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Host directory storing extracted bot sources and builds
+      - bothost_bots_data:/var/lib/bothost/bots
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-bothost_user}:${POSTGRES_PASSWORD:-bothost_secure_password}@postgres:5432/${POSTGRES_DB:-bothost_db}
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production-2026}
+      - FERNET_SECRET_KEY=${FERNET_SECRET_KEY:-YOUR_32_BYTE_BASE64_FERNET_KEY_HERE=}
+      - DOCKER_SOCKET_PATH=/var/run/docker.sock
+      - BOT_STORAGE_DIR=/var/lib/bothost/bots
+      - APP_URL=${APP_URL:-http://localhost}
+    networks:
+      - bothost_net
+
+  # ----------------------------------------------------------------------------
+  # React Frontend (Vite static build served by Node/Caddy)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: bothost_frontend
+    restart: unless-stopped
+    networks:
+      - bothost_net
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  bothost_bots_data:
+
+networks:
+  bothost_net:
+    driver: bridge

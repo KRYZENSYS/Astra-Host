@@ -1,0 +1,6 @@
+{
+  "summary":  "Architecture, folder structure, database schema, and complete API specification for BotHost Stage 1 (Real, working MVP without mocks) running Python Telegram bots in isolated Docker containers with Caddy reverse proxy, Argon2/JWT auth, Fernet secret encryption, and React dashboard.",
+  "updatedAt":  "2026-10-29T11:13:39.279702178Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

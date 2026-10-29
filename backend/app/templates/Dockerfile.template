@@ -1,0 +1,27 @@
+FROM python:3.12-slim
+
+# Prevent bytecode writing and buffer logs
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DATA_DIR=/data
+
+WORKDIR /app
+
+# Create unprivileged system user and dedicated /data persistent volume directory
+RUN useradd -u 10001 -m botuser && \
+    mkdir -p /data && \
+    chown -R botuser:botuser /data
+
+# Install dependencies
+COPY requirements.txt* ./
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+
+# Copy application source code
+COPY . .
+RUN chown -R botuser:botuser /app
+
+# Switch to unprivileged user
+USER botuser
+
+# Default command placeholder, replaced during container build
+CMD ["python", "{ENTRYPOINT}"]
